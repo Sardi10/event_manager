@@ -18,6 +18,7 @@ from builtins import range
 from datetime import datetime
 from unittest.mock import patch
 from uuid import uuid4
+from urllib.parse import urlencode
 
 # Third-party imports
 import pytest
@@ -63,6 +64,27 @@ async def async_client(db_session):
             yield client
         finally:
             app.dependency_overrides.clear()
+
+@pytest.fixture
+async def user_token(async_client, verified_user):
+    """
+    Logs in as a normal user (verified_user) and returns the access token.
+    """
+    form_data = {
+        "username": verified_user.email,
+        "password": "MySuperPassword$1234"
+    }
+    # We assume your login endpoint is /login/ and uses form data
+    response = await async_client.post(
+        "/login/",
+        data=urlencode(form_data),
+        headers={"Content-Type": "application/x-www-form-urlencoded"}
+    )
+    data = response.json()
+    
+    # This fixture returns just the token string. 
+    # Some tests might also want the token type or the full response JSON.
+    return data["access_token"]
 
 @pytest.fixture(scope="session", autouse=True)
 def initialize_database():
