@@ -86,6 +86,44 @@ async def user_token(async_client, verified_user):
     # Some tests might also want the token type or the full response JSON.
     return data["access_token"]
 
+@pytest.fixture(scope="function")
+async def admin_user(db_session: AsyncSession):
+    """
+    Creates an admin user in the database with a known email and password.
+    """
+    user = User(
+        nickname="admin_user",
+        email="admin@example.com",
+        hashed_password=hash_password("MySuperPassword$1234"),
+        role=UserRole.ADMIN,
+        email_verified=True,   # <-- Must be True if your login requires verified emails
+        is_locked=False,
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    return user
+
+@pytest.fixture
+async def admin_token(async_client, admin_user):
+    """
+    Logs in as the admin_user fixture and returns the access token.
+    """
+    form_data = {
+        "username": admin_user.email,
+        "password": "MySuperPassword$1234"
+    }
+    response = await async_client.post(
+        "/login/",
+        data=urlencode(form_data),
+        headers={"Content-Type": "application/x-www-form-urlencoded"}
+    )
+    data = response.json()
+
+    # If the login failed (e.g., user is unverified or password mismatch),
+    # data might not contain "access_token" and cause a KeyError.
+    return data["access_token"]
+
 @pytest.fixture(scope="session", autouse=True)
 def initialize_database():
     try:
