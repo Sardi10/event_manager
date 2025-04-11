@@ -87,24 +87,6 @@ async def user_token(async_client, verified_user):
     # Some tests might also want the token type or the full response JSON.
     return data["access_token"]
 
-# @pytest.fixture(scope="function")
-# async def admin_user(db_session: AsyncSession):
-#     """
-#     Creates an admin user in the database with a known email and password.
-#     """
-#     user = User(
-#         nickname="admin_user",
-#         email="admin@example.com",
-#         hashed_password=hash_password("MySuperPassword$1234"),
-#         role=UserRole.ADMIN,
-#         email_verified=True,   # <-- Must be True if your login requires verified emails
-#         is_locked=False,
-#     )
-#     db_session.add(user)
-#     await db_session.commit()
-#     await db_session.refresh(user)
-#     return user
-
 @pytest.fixture(scope="function")
 async def admin_user(db_session):
     """
@@ -280,21 +262,6 @@ async def users_with_same_role_50_users(db_session):
     await db_session.commit()
     return users
 
-# @pytest.fixture
-# async def admin_user(db_session: AsyncSession):
-#     user = User(
-#         nickname="admin_user",
-#         email="admin@example.com",
-#         first_name="John",
-#         last_name="Doe",
-#         hashed_password=hash_password("MySuperPassword$1234"),
-#         role=UserRole.ADMIN,
-#         is_locked=False,
-#     )
-#     db_session.add(user)
-#     await db_session.commit()
-#     return user
-
 @pytest.fixture
 async def manager_user(db_session: AsyncSession):
     user = User(
@@ -304,12 +271,36 @@ async def manager_user(db_session: AsyncSession):
         email="manager_user@example.com",
         hashed_password=hash_password("MySuperPassword$1234"),
         role=UserRole.MANAGER,
+        email_verified=True,
         is_locked=False,
     )
     db_session.add(user)
     await db_session.commit()
     return user
 
+@pytest.fixture
+async def manager_token(async_client, manager_user):
+    """
+    Logs in as the manager user and returns the access token.
+    """
+    form_data = {
+        "username": manager_user.email,          # "manager_user@example.com"
+        "password": "MySuperPassword$1234"         # Must match the password used in manager_user fixture
+    }
+    print("Sending manager login request with data:", form_data)
+    response = await async_client.post(
+        "/login/",
+        data=urlencode(form_data),
+        headers={"Content-Type": "application/x-www-form-urlencoded"}
+    )
+    print("Manager login response status:", response.status_code)
+    print("Manager login response text:", response.text)
+    if response.status_code != 200:
+        raise Exception("Manager login failed. Response: " + response.text)
+    data = response.json()
+    if "access_token" not in data:
+        raise Exception("No access token in login response: " + response.text)
+    return data["access_token"]
 
 # Fixtures for common test data
 @pytest.fixture
