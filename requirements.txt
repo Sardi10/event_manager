@@ -60,4 +60,4 @@ typing_extensions==4.10.0
 uvicorn==0.29.0
 validators==0.24.0
 markdown2
-pyjwt
+pyjwt==2.8.0

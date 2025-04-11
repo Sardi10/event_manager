@@ -18,6 +18,7 @@ from builtins import range
 from datetime import datetime
 from unittest.mock import patch
 from uuid import uuid4
+from urllib.parse import urlencode
 
 # Third-party imports
 import pytest
@@ -26,6 +27,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, scoped_session
 from faker import Faker
+from sqlalchemy import select
 
 # Application-specific imports
 from app.main import app
@@ -63,6 +65,86 @@ async def async_client(db_session):
             yield client
         finally:
             app.dependency_overrides.clear()
+
+@pytest.fixture
+async def user_token(async_client, verified_user):
+    """
+    Logs in as a normal user (verified_user) and returns the access token.
+    """
+    form_data = {
+        "username": verified_user.email,
+        "password": "MySuperPassword$1234"
+    }
+    # We assume your login endpoint is /login/ and uses form data
+    response = await async_client.post(
+        "/login/",
+        data=urlencode(form_data),
+        headers={"Content-Type": "application/x-www-form-urlencoded"}
+    )
+    data = response.json()
+    
+    # This fixture returns just the token string. 
+    # Some tests might also want the token type or the full response JSON.
+    return data["access_token"]
+
+@pytest.fixture(scope="function")
+async def admin_user(db_session):
+    """
+    Creates an admin user in the database if one does not already exist.
+    Returns the admin user.
+    """
+    # Check if an admin user with email "admin@example.com" already exists
+    query = select(User).where(User.email == "admin@example.com")
+    result = await db_session.execute(query)
+    user = result.scalars().first()
+
+    if not user:
+        # No admin user exists, so create one
+        print("Creating admin user fixture...")
+        user = User(
+            nickname="admin_user",
+            email="admin@example.com",  # Use this exact email
+            hashed_password=hash_password("MySuperPassword$1234"),  # This must match your login credentials
+            role=UserRole.ADMIN,
+            email_verified=True,   # Must be True so that login does not reject the user
+            is_locked=False,
+        )
+        db_session.add(user)
+        await db_session.commit()
+        await db_session.refresh(user)
+        print("Admin user created:", user.email)
+    else:
+        print("Admin user already exists:", user.email)
+        
+    return user
+
+
+@pytest.fixture
+async def admin_token(async_client, admin_user):
+    """
+    Logs in as the admin user and returns the access token.
+    """
+    form_data = {
+        "username": admin_user.email,
+        "password": "MySuperPassword$1234"
+    }
+    print("Sending login request with:", form_data)
+    response = await async_client.post(
+        "/login/",
+        data=urlencode(form_data),
+        headers={"Content-Type": "application/x-www-form-urlencoded"}
+    )
+    print("Login response status:", response.status_code)
+    print("Login response text:", response.text)
+    
+    if response.status_code != 200:
+        raise Exception("Admin login failed. See debug output above.")
+    
+    data = response.json()
+    if "access_token" not in data:
+        raise Exception("No access_token in login response: " + response.text)
+    
+    return data["access_token"]
 
 @pytest.fixture(scope="session", autouse=True)
 def initialize_database():
@@ -181,14 +263,15 @@ async def users_with_same_role_50_users(db_session):
     return users
 
 @pytest.fixture
-async def admin_user(db_session: AsyncSession):
+async def manager_user(db_session: AsyncSession):
     user = User(
-        nickname="admin_user",
-        email="admin@example.com",
+        nickname="manager_john",
         first_name="John",
         last_name="Doe",
-        hashed_password="securepassword",
-        role=UserRole.ADMIN,
+        email="manager_user@example.com",
+        hashed_password=hash_password("MySuperPassword$1234"),
+        role=UserRole.MANAGER,
+        email_verified=True,
         is_locked=False,
     )
     db_session.add(user)
@@ -196,20 +279,28 @@ async def admin_user(db_session: AsyncSession):
     return user
 
 @pytest.fixture
-async def manager_user(db_session: AsyncSession):
-    user = User(
-        nickname="manager_john",
-        first_name="John",
-        last_name="Doe",
-        email="manager_user@example.com",
-        hashed_password="securepassword",
-        role=UserRole.MANAGER,
-        is_locked=False,
+async def manager_token(async_client, manager_user):
+    """
+    Logs in as the manager user and returns the access token.
+    """
+    form_data = {
+        "username": manager_user.email,          # "manager_user@example.com"
+        "password": "MySuperPassword$1234"         # Must match the password used in manager_user fixture
+    }
+    print("Sending manager login request with data:", form_data)
+    response = await async_client.post(
+        "/login/",
+        data=urlencode(form_data),
+        headers={"Content-Type": "application/x-www-form-urlencoded"}
     )
-    db_session.add(user)
-    await db_session.commit()
-    return user
-
+    print("Manager login response status:", response.status_code)
+    print("Manager login response text:", response.text)
+    if response.status_code != 200:
+        raise Exception("Manager login failed. Response: " + response.text)
+    data = response.json()
+    if "access_token" not in data:
+        raise Exception("No access token in login response: " + response.text)
+    return data["access_token"]
 
 # Fixtures for common test data
 @pytest.fixture
@@ -219,7 +310,8 @@ def user_base_data():
         "email": "john.doe@example.com",
         "full_name": "John Doe",
         "bio": "I am a software engineer with over 5 years of experience.",
-        "profile_picture_url": "https://example.com/profile_pictures/john_doe.jpg"
+        "profile_picture_url": "https://example.com/profile_pictures/john_doe.jpg",
+        "nickname" : "jdoe"
     }
 
 @pytest.fixture
@@ -229,13 +321,14 @@ def user_base_data_invalid():
         "email": "john.doe.example.com",
         "full_name": "John Doe",
         "bio": "I am a software engineer with over 5 years of experience.",
-        "profile_picture_url": "https://example.com/profile_pictures/john_doe.jpg"
+        "profile_picture_url": "https://example.com/profile_pictures/john_doe.jpg",
+        "nickname" : "jdoe"
     }
 
 
 @pytest.fixture
 def user_create_data(user_base_data):
-    return {**user_base_data, "password": "SecurePassword123!"}
+    return {**user_base_data, "password": "MySuperPassword$1234"}
 
 @pytest.fixture
 def user_update_data():
@@ -260,4 +353,4 @@ def user_response_data():
 
 @pytest.fixture
 def login_request_data():
-    return {"username": "john_doe_123", "password": "SecurePassword123!"}
+    return {"username": "john_doe_123", "password": "MySuperPassword$1234"}
