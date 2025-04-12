@@ -77,3 +77,26 @@ def test_invalid_nickname_characters():
     with pytest.raises(ValidationError) as exc_info:
         UserBase(**invalid_data)
     assert "Nickname must contain only alphanumeric characters" in str(exc_info.value)
+
+def test_weak_password():
+    # Test with a password that is too short and lacks complexity.
+    invalid_payload = {
+        "email": "test@example.com",
+        "password": "pass"  # Too short, no digits, and no special character
+    }
+    with pytest.raises(ValidationError) as exc_info:
+        UserCreate(**invalid_payload)
+    
+    error_str = str(exc_info.value)
+    assert "at least 8 characters" in error_str or "uppercase" in error_str
+
+def test_password_without_special_character():
+    invalid_payload = {
+        "email": "test@example.com",
+        "password": "Password1"  # No special character
+    }
+    with pytest.raises(ValidationError) as exc_info:
+        UserCreate(**invalid_payload)
+    
+    error_str = str(exc_info.value)
+    assert "special character" in error_str
