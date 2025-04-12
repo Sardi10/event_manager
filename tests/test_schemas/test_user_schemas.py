@@ -67,3 +67,13 @@ def test_user_base_invalid_email(user_base_data_invalid):
     
     assert "value is not a valid email address" in str(exc_info.value)
     assert "john.doe.example.com" in str(exc_info.value)
+
+#Test for Invalid nichname Characters
+def test_invalid_nickname_characters():
+    invalid_data = {
+        "email": "test@example.com",
+        "nickname": "john$doe",  # Contains an invalid character '$'
+    }
+    with pytest.raises(ValidationError) as exc_info:
+        UserBase(**invalid_data)
+    assert "Nickname must contain only alphanumeric characters" in str(exc_info.value)
