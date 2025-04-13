@@ -1,11 +1,13 @@
 from builtins import str
 import pytest
+import asyncio
 from httpx import AsyncClient
+from datetime import datetime, timedelta
 from app.main import app
 from app.models.user_model import User
 from app.utils.nickname_gen import generate_nickname
 from app.utils.security import hash_password
-from app.services.jwt_service import decode_token  # Import your FastAPI app
+from app.services.jwt_service import decode_token, create_access_token  # Import your FastAPI app
 
 # Example of a test function using the async_client fixture
 @pytest.mark.asyncio
@@ -189,3 +191,12 @@ async def test_list_users_unauthorized(async_client, user_token):
         headers={"Authorization": f"Bearer {user_token}"}
     )
     assert response.status_code == 403  # Forbidden, as expected for regular user
+
+@pytest.mark.asyncio
+async def test_expired_token():
+    # Generate a token that expires in 1 second.
+    token = create_access_token(data={"sub": "test@example.com", "role": "AUTHENTICATED"}, expires_delta=timedelta(seconds=1))
+    # Wait for 2 seconds to ensure the token has expired.
+    await asyncio.sleep(2)
+    decoded = decode_token(token)
+    assert decoded is None, "Expired token should return None"
