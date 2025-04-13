@@ -100,3 +100,39 @@ def test_password_without_special_character():
     
     error_str = str(exc_info.value)
     assert "special character" in error_str
+
+def test_password_too_short():
+    invalid_data = {
+        "email": "test@example.com",
+        "password": "Short1!",
+    }
+    with pytest.raises(ValidationError) as exc_info:
+        UserCreate(**invalid_data)
+    assert "at least 8 characters" in str(exc_info.value)
+
+def test_password_without_uppercase():
+    invalid_data = {
+        "email": "test@example.com",
+        "password": "secure*1234",  # no uppercase letters
+    }
+    with pytest.raises(ValidationError) as exc_info:
+        UserCreate(**invalid_data)
+    assert "at least one uppercase" in str(exc_info.value)
+
+def test_password_without_lowercase():
+    invalid_data = {
+        "email": "test@example.com",
+        "password": "SECURE*1234",  # no lowercase letters
+    }
+    with pytest.raises(ValidationError) as exc_info:
+        UserCreate(**invalid_data)
+    assert "at least one lowercase" in str(exc_info.value)
+
+def test_password_without_digit():
+    invalid_data = {
+        "email": "test@example.com",
+        "password": "Secure*Password",  # no digits
+    }
+    with pytest.raises(ValidationError) as exc_info:
+        UserCreate(**invalid_data)
+    assert "at least one digit" in str(exc_info.value)
