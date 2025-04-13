@@ -4,6 +4,7 @@ from sqlalchemy import select
 from app.dependencies import get_settings
 from app.models.user_model import User
 from app.services.user_service import UserService
+from settings.config import settings
 
 pytestmark = pytest.mark.asyncio
 
@@ -156,3 +157,14 @@ async def test_unlock_user_account(db_session, locked_user):
     assert unlocked, "The account should be unlocked"
     refreshed_user = await UserService.get_by_id(db_session, locked_user.id)
     assert not refreshed_user.is_locked, "The user should no longer be locked"
+
+@pytest.mark.asyncio
+async def test_account_lockout_on_failed_logins(db_session, verified_user):
+    # Simulate multiple failed login attempts.
+    for _ in range(settings.max_login_attempts):
+        user = await UserService.login_user(db_session, verified_user.email, "WrongPassword")
+        assert user is None
+
+    # After max attempts, the user should be locked.
+    locked_user = await UserService.get_by_email(db_session, verified_user.email)
+    assert locked_user.is_locked is True, "The account should be locked after maximum failed logins."
