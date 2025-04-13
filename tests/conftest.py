@@ -334,7 +334,7 @@ def user_create_data(user_base_data):
 def user_update_data():
     return {
         "email": "john.doe.new@example.com",
-        "full_name": "John H. Doe",
+        "first_name": "John",
         "bio": "I specialize in backend development with Python and Node.js.",
         "profile_picture_url": "https://example.com/profile_pictures/john_doe_updated.jpg"
     }
@@ -342,7 +342,7 @@ def user_update_data():
 @pytest.fixture
 def user_response_data():
     return {
-        "id": "unique-id-string",
+        "id": "f89f84ba-4a43-4ffb-9d01-60d9680f329a",
         "username": "testuser",
         "email": "test@example.com",
         "last_login_at": datetime.now(),
@@ -353,4 +353,4 @@ def user_response_data():
 
 @pytest.fixture
 def login_request_data():
-    return {"username": "john_doe_123", "password": "MySuperPassword$1234"}
+    return {"email": "test@example.com", "password": "MySuperPassword$1234"}

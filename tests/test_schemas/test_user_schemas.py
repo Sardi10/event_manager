@@ -25,8 +25,8 @@ def test_user_update_valid(user_update_data):
 # Tests for UserResponse
 def test_user_response_valid(user_response_data):
     user = UserResponse(**user_response_data)
-    assert user.id == user_response_data["id"]
-    # assert user.last_login_at == user_response_data["last_login_at"]
+    assert str(user.id) == user_response_data["id"]
+    #assert user.last_login_at == user_response_data["last_login_at"]
 
 # Tests for LoginRequest
 def test_login_request_valid(login_request_data):
@@ -136,3 +136,22 @@ def test_password_without_digit():
     with pytest.raises(ValidationError) as exc_info:
         UserCreate(**invalid_data)
     assert "at least one digit" in str(exc_info.value)
+
+@pytest.mark.asyncio
+async def test_update_multiple_profile_fields(async_client, admin_token, verified_user):
+    headers = {"Authorization": f"Bearer {admin_token}"}
+    update_payload = {
+        "bio": "Updated bio text that is valid.",
+        "profile_picture_url": "https://example.com/new-profile.jpg"
+    }
+    response = await async_client.put(f"/users/{verified_user.id}", json=update_payload, headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["bio"] == update_payload["bio"]
+    assert data["profile_picture_url"] == update_payload["profile_picture_url"]
+
+def test_invalid_profile_picture_url():
+    invalid_update = {"profile_picture_url": "htt:/invalid"}
+    with pytest.raises(ValidationError) as exc_info:
+        UserUpdate(**invalid_update)
+    assert "Invalid URL format" in str(exc_info.value)
