@@ -1,5 +1,8 @@
 from builtins import range
 import pytest
+import uuid
+from httpx import AsyncClient
+from fastapi import status
 from sqlalchemy import select
 from app.dependencies import get_settings
 from app.models.user_model import User
