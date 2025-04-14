@@ -18,3 +18,5 @@ Issue demonstrated in the video: https://github.com/Sardi10/event_manager/issues
 
 For a more detailed explaination on the issues please see:
 [Resolved Issues](./issues-resolved.md)
+
+Link to Docker Image: https://hub.docker.com/repository/docker/sardi10/event_manager/general
