@@ -72,8 +72,8 @@ jobs:
           push: true
           tags: sardi10/event_manager:${{ github.sha }} # Uses the Git SHA for tagging
           platforms: linux/amd64,linux/arm64 # Multi-platform support
-          cache-from: type=registry,ref=sardi10/event_manager:cache
-          cache-to: type=inline,mode=max
+          #cache-from: type=registry,ref=sardi10/event_manager:cache
+          #cache-to: type=inline,mode=max
           
       - name: Scan the Docker image
         uses: aquasecurity/trivy-action@master
